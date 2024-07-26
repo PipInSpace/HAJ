@@ -90,4 +90,55 @@ fn main() {
 }
 ```
 
-The annotated Rust functions are translated into OpenCL C and compiled via OpenCL.
+The annotated Rust functions are translated into OpenCL C and compiled via OpenCL. This is the C source code output:
+
+```c
+#define TYPE_BO 0x00
+#define TYPE_SU 0x00
+#define TYPE_S 0x00
+#define TYPE_G 0x00
+#define def_velocity_set 19
+#define def_c 1.3f
+#define def_N 32
+
+bool is_halo(const unsigned int n) {
+return false;
+}
+void neighbors(const unsigned int n, unsigned int* j) {
+}
+void load_f(const unsigned int n, float* fhn, const float* fi, const unsigned int* j, const unsigned long t) {
+}
+void calculate_rho_u(const float* fhn, float rhon, float uxn, float uyn, float uzn) {
+}
+__kernel void update_fields(const global float* fi, global float* rho, global float* u, const global unsigned char* flags, const unsigned long t, const float fx, const float fy, const float fz) {
+const unsigned int n = get_global_id(0);
+if (n >= (unsigned int)def_N || is_halo(n)) {
+return;
+}
+const unsigned char flagsn = flags[(unsigned long)n];
+const unsigned char flagsn_bo = flagsn & TYPE_BO;
+const unsigned char flagsn_su = flagsn & TYPE_SU;
+if (flagsn_bo == TYPE_S || flagsn_su == TYPE_G) {
+return;
+}
+unsigned int j[def_velocity_set] = {0};
+neighbors(n, j);
+float fhn[def_velocity_set] = {0.0};
+load_f(n, fhn, fi, j, t);
+float rhon = 0.0;
+float uxn = 0.0;
+float uyn = 0.0;
+float uzn = 0.0;
+unsigned int testificat = 0;
+calculate_rho_u(fhn, rhon, uxn, uyn, uzn);
+{
+uxn = clamp(uxn, -def_c, def_c);
+uyn = clamp(uyn, -def_c, def_c);
+uzn = clamp(uzn, -def_c, def_c);
+}
+rho[(unsigned long)n] = rhon;
+u[(unsigned long)n] = uxn;
+u[def_N + (unsigned long)n] = uyn;
+u[2 * def_N + (unsigned long)n] = uzn;
+}
+```
