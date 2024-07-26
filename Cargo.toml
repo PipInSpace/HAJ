@@ -1,0 +1,2 @@
+[workspace]
+members = [ "haj", "haj_macros" ]
