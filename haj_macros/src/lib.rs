@@ -1,8 +1,6 @@
-//! # HAJ
+//! # HAJ Macros
 //! 
-//! HAJ (HAJ Accelerated Jobs) allows for single source OpenCL programming in Rust. Simply annotate Rust
-//! functions as `#[cl_fn]` or `#[cl_kernel]` and they are automatically converted into C and made runnable
-//! over OpenCL.
+//! `haj_macros` provides procedural macros required for the `haj` crate. All macros are reexported through `haj`.
 
 extern crate proc_macro;
 use proc_macro::TokenStream;
@@ -11,14 +9,8 @@ use quote::quote;
 #[cfg(test)]
 mod tests;
 
-//struct CLKernel {
-//    name: String,
-//    args: Vec<String>
-//}
-
-
+// Used to collect source code from all annotated Rust functions
 static mut CL_SOURCE: Vec<&'static str> = Vec::new();
-//static mut KERNEL_NAMES: Vec<&'static CLKernel> = Vec::new();
 
 #[proc_macro_attribute]
 /// Mark a Rust function to be included in the OpenCL program source
@@ -56,7 +48,9 @@ pub fn haj_init(_input: TokenStream) -> TokenStream {
         CL_SOURCE.join("\n")
     };
 
-    // Attempt compilation over OpenCL:
+    // Attempt compilation over OpenCL at build time. Useful for finding errors in programs or during
+    // translation. The rust-analyzer hates this and often crashes here during code analysis. Disable
+    // during coding.
     #[cfg(feature = "analyse_at_compilation")]
     match ocl::Device::list_all(ocl::Platform::default()) {
         Ok(devices) => {
@@ -80,8 +74,7 @@ pub fn haj_init(_input: TokenStream) -> TokenStream {
         Err(_) => {}
     }
 
-    
-
+    // Provide globally accessible OpenCL context
     let expanded = quote! {
         const CL_SOURCE: &str = #cl_source;
         haj::lazy_static::lazy_static! {
