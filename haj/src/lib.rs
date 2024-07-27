@@ -7,3 +7,43 @@
 pub use haj_macros::*;
 pub use lazy_static;
 pub use ocl;
+
+// Wrapper object for OpenCL Buffers
+pub enum BufferT {
+    U8(ocl::Buffer<u8>),
+    U16(ocl::Buffer<u16>),
+    U32(ocl::Buffer<u32>),
+    U64(ocl::Buffer<u64>),
+    I8(ocl::Buffer<i8>),
+    I16(ocl::Buffer<i16>),
+    I32(ocl::Buffer<i32>),
+    I64(ocl::Buffer<i64>),
+    F32(ocl::Buffer<f32>),
+    F64(ocl::Buffer<f64>),
+}
+
+#[allow(unused)]
+/// Creates a buffer of the specified size and flags. The type is inferred from the fill value.
+pub fn create_buffer<T: ocl::OclPrm, I: Into<ocl::SpatialDims> + Clone>(
+    queue: &ocl::Queue,
+    size: I,
+    fill_value: T,
+) -> ocl::Buffer<T> {
+    if (size.clone().into() as ocl::SpatialDims).to_len() >= 1 {
+        return ocl::Buffer::<T>::builder()
+            .queue(queue.clone())
+            .len(size)
+            .fill_val(fill_value)
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .build()
+            .unwrap();
+    }
+    // use size of 1 if invalid
+    return ocl::Buffer::<T>::builder()
+        .queue(queue.clone())
+        .len([1])
+        .fill_val(fill_value)
+        .flags(ocl::flags::MEM_READ_WRITE)
+        .build()
+        .unwrap();
+}
