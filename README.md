@@ -9,8 +9,8 @@ to make writing highly parallel software as convenient as possible. Rust to C tr
 by the crate `rs2c`. Currently only simple Rust language features are supported and all types need to
 be annotated. These limitations may be lifted over time.
 
-To use this crate, clone this repository and the rs2c repository. Add the `haj` crate as a dependency
-for your project by specifiying the path to the crate.
+To use this crate, clone this repository and the `rs2c` repository. Add the `haj` crate as a dependency
+for your project by specifiying the path to the crate. A crates.io release will follow in time
 
 # Usage
 
@@ -19,17 +19,17 @@ This is a simple example program using HAJ:
 ```rust
 use haj::*;
 
-haj_cl_raw_c!("
+cl_raw!("
 #define TYPE_BO 0x00
 #define TYPE_SU 0x00
 #define TYPE_S 0x00
 #define TYPE_G 0x00
-#define def_velocity_set 19
+#define def_velocity_set 19u
 #define def_c 1.3f
-#define def_N 32
+#define def_N 32u
 ");
 
-#[cl_fn]
+#[cl_fn] // Include this as a basic OpenCL function for use in different OpenCL code
 fn is_halo(n: u32) -> bool { return false; }
 #[cl_fn]
 fn neighbors(n: u32, j: &mut [u32; def_velocity_set]) { }
@@ -38,7 +38,7 @@ fn load_f(n: u32, fhn: &mut [f32; def_velocity_set], fi: &Vec<f32>, j: &[u32; de
 #[cl_fn]
 fn calculate_rho_u(fhn: &[f32; def_velocity_set], rhon: &mut f32, uxn: &mut f32, uyn: &mut f32, uzn: &mut f32) {}
 
-#[cl_kernel]
+#[cl_kernel] // Include this as an OpenCL kernel function to be called in parallel
 fn update_fields(fi: &Vec<f32>, rho: &mut Vec<f32>, u: &mut Vec<f32>, flags: &Vec<u8>, t: u64, fx: f32, fy: f32, fz: f32) {
     let n: u32 = get_global_id(0); // n = x+(y+z*Ny)*Nx
     if n>=def_N as u32 || is_halo(n) { return; } // don't execute update_fields() on halo
@@ -71,35 +71,38 @@ fn update_fields(fi: &Vec<f32>, rho: &mut Vec<f32>, u: &mut Vec<f32>, flags: &Ve
     u[2*def_N+n as usize] = uzn;
 }
 
-haj_init!();
+// The HAJ initialisation macro builds a global OpenCL context.
+// In source code it needs to be called below all the included functions.   
+haj_init!(); 
 
 fn main() {
     {
         let program = HAJ_OCL_PROGRAM.lock().unwrap();
         let program_src= (*program).to_string();
-        println!("{}", program_src); // Prints the compiled program bytes
+        println!("{}", program_src); // Prints information about the program, including OpenCL source code and compiled bytes
     }
-    
-    println!("{}", CL_SOURCE); // Prints the OpenCL C source code generated from Rust functions
 
-    let mut kernels = HAJ_OCL_KERNELS.lock().unwrap(); // This will fail. Kernel arguments are not set correctly at the moment.
+    // Accessing kernels will be automated over macros
+    let mut kernels = HAJ_OCL_KERNELS.lock().unwrap();
     let kernel = (*kernels).get_mut("update_fields").expect("kernel");
+    println!("Running kernel");
     unsafe {
         kernel.enq().unwrap()
     }
+    println!("Success!");
 }
 ```
 
-The annotated Rust functions are translated into OpenCL C and compiled via OpenCL. This is the C source code output:
+The annotated Rust functions are translated into OpenCL C and compiled via OpenCL. This is the OpenCL C source code output:
 
 ```c
 #define TYPE_BO 0x00
 #define TYPE_SU 0x00
 #define TYPE_S 0x00
 #define TYPE_G 0x00
-#define def_velocity_set 19
+#define def_velocity_set 19u
 #define def_c 1.3f
-#define def_N 32
+#define def_N 32u
 
 bool is_halo(const unsigned int n) {
 return false;
