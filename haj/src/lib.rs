@@ -8,6 +8,11 @@ pub use haj_macros::*;
 pub use lazy_static;
 pub use ocl;
 
+mod opencl_builtin;
+
+pub use opencl_builtin::*;
+pub use half::prelude::f16;
+
 // Wrapper object for OpenCL Buffers
 pub enum BufferT {
     U8(ocl::Buffer<u8>),
@@ -46,4 +51,21 @@ pub fn create_buffer<T: ocl::OclPrm, I: Into<ocl::SpatialDims> + Clone>(
         .flags(ocl::flags::MEM_READ_WRITE)
         .build()
         .unwrap();
+}
+
+#[macro_export]
+/// Launch a definded Kernel
+macro_rules! haj_launch {
+    ($kernel_name:expr=>$work_size:expr, $( $arg:expr),*) => { // Unnamed arguments
+        let kernels = HAJ_OCL_KERNELS.lock().unwrap();
+        let kernel = (*kernels).get($kernel_name).expect("kernel");
+        let mut i = 0;
+        $(
+            kernel.set_arg(i, $arg).unwrap();
+            i += 1;
+        )*
+        unsafe {
+            kernel.cmd().global_work_size($work_size).enq().unwrap()
+        }
+    };
 }

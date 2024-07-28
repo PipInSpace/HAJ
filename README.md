@@ -145,3 +145,13 @@ u[def_N + (unsigned long)n] = uyn;
 u[2 * def_N + (unsigned long)n] = uzn;
 }
 ```
+
+## Vector Types
+
+OpenCL has support for Vector Types of lenghts 2, 3, 4, 8 and 16 for the types char, short, int and
+long (both signed and unsigned) as well as half, float and double. To use them in your Rust code,
+do the following:
+```rust
+let vector: FloatN<3> = [0.0f32, 1.0f32, 0.0f32].into(); // Defines a new OpenCL float Vector of lenght 3
+```
+Do not use the Struct itself for initialisation, this will not be translated correctly!
